@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:my_app2/widgets/common_listtile.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,191 +16,225 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
         themeMode: ThemeMode.system,
         debugShowCheckedModeBanner: false,
-        home: HomeScreen(),
-        title: "My Application"
-    );
+        home: EmiCalculator(),
+        title: "My Application");
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class EmiCalculator extends StatefulWidget {
+  const EmiCalculator({Key? key}) : super(key: key);
 
   @override
-  HomeScreenState createState() => HomeScreenState();
+  State<EmiCalculator> createState() => _EmiCalculatorState();
 }
 
-class HomeScreenState extends State<HomeScreen> {
+class _EmiCalculatorState extends State<EmiCalculator> {
+  double loanAmountSliderValue = 16000;
+  double rateOfInterestSliderValue = 12;
+  double loanTenureSliderValue = 2;
+  double? emi;
+  String? formattedEmi,formattedTotalInterest,formattedTotalAmount;
+  List<PieData> data=[];
+  void calculateEmiAmount(){
+    double monthlyInterestRate = (rateOfInterestSliderValue / 12) / 100;
+    int totalInstallments = (loanTenureSliderValue).round();
 
-  final List _tenureTypes = [ 'Month(s)', 'Year(s)' ];
-  String _tenureType = "Year(s)";
-  String _emiResult = "";
+    emi = loanAmountSliderValue *
+        monthlyInterestRate *
+        pow(1 + monthlyInterestRate, totalInstallments) /
+        (pow(1 + monthlyInterestRate, totalInstallments) - 1);
+    // print("Emi : $emi");
+     formattedEmi = emi!.toStringAsFixed(2);
 
-  final TextEditingController _principalAmount = TextEditingController();
-  final TextEditingController _interestRate = TextEditingController();
-  final TextEditingController _tenure = TextEditingController();
-
-  bool _switchValue = true;
-
-
+    double totalRepayment = emi! * totalInstallments;
+    double totalInterest = totalRepayment - loanAmountSliderValue;
+     formattedTotalInterest = totalInterest.round().toStringAsFixed(2);
+    double totalAmount = loanAmountSliderValue + totalInterest;
+     formattedTotalAmount = totalAmount.round().toStringAsFixed(2);
+     data = [
+      PieData('Total Principal Amount', loanAmountSliderValue,
+          const Color(0xFFBB868E)),
+      PieData('Emi', totalInterest, const Color(0xFFFEFEFF)),
+    ];
+  }
   @override
   Widget build(BuildContext context) {
+    calculateEmiAmount();
     return Scaffold(
-        appBar: AppBar(
-            title: const Text("EMI Calculator"),
-            elevation: 0.0
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const SizedBox(
+              height: 50,
+            ),
+            const Text(
+              "EMI Calculator",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            const SizedBox(
+              height: 50,
+            ),
+            Container(
+              // height: MediaQuery.of(context).size.height,
+              decoration:  BoxDecoration(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                color: const Color(0xFF252A31),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.white.withOpacity(0.05), spreadRadius: 5, blurRadius: 2),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  Slider(
+                    value: loanAmountSliderValue,
+                    max: 100000,
+                    min: 15000,
+                    divisions: 85,
+                    activeColor: const Color(0xFFBB868E),
+                    inactiveColor: const Color(0xFFFEFEFF),
+                    label: loanAmountSliderValue.round().toString(),
+                    onChanged: (double value) {
+                      setState(() {
+                        loanAmountSliderValue = value;
+                      });
+                    },
+                  ),
+                  listTile(false,
+                      title: "Loan Amount", subTitle: "$loanAmountSliderValue"),
+                  Slider(
+                    value: rateOfInterestSliderValue,
+                    max: 28,
+                    min: 1,
+                    divisions: 27,
+                    activeColor: const Color(0xFFBB868E),
+                    inactiveColor: const Color(0xFFFEFEFF),
+                    label: rateOfInterestSliderValue.round().toString(),
+                    onChanged: (double value) {
+                      setState(() {
+                        rateOfInterestSliderValue = value;
+                      });
+                    },
+                  ),
+                  listTile(false,
+                      title: "Rate Of Interest",
+                      subTitle: "$rateOfInterestSliderValue"),
+                  Slider(
+                    value: loanTenureSliderValue,
+                    max: 30,
+                    min: 1,
+                    divisions: 29,
+                    activeColor: const Color(0xFFBB868E),
+                    inactiveColor: const Color(0xFFFEFEFF),
+                    label: loanTenureSliderValue.round().toString(),
+                    onChanged: (double value) {
+                      setState(() {
+                        loanTenureSliderValue = value;
+                      });
+                    },
+                  ),
+                  listTile(false,
+                      title: "Loan tenure",
+                      subTitle: "$loanTenureSliderValue Months"),
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 20,
+                      ),
+                      SizedBox(
+                        height: 150,
+                        width: 150,
+                        child: SfCircularChart(
+                            legend: const Legend(isVisible: false),
+                            series: <DoughnutSeries<PieData, String>>[
+                              DoughnutSeries<PieData, String>(
+                                explode: false,
+                                explodeIndex: 0,
+                                dataSource: data,
+                                pointColorMapper: (PieData data, _) =>
+                                    data.color,
+                                xValueMapper: (PieData data, _) => data.xData,
+                                yValueMapper: (PieData data, _) => data.yData,
+                                // dataLabelMapper: (PieData data, _) => data.text,
+                                dataLabelSettings:
+                                    const DataLabelSettings(isVisible: false),
+                              ),
+                            ]),
+                      ),
+                      const SizedBox(
+                        width: 20,
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "EMI",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            "Rs.$formattedEmi",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                  listTile(
+                    true,
+                    title: "Principal Amount",
+                    subTitle: "Rs.$loanAmountSliderValue",
+                    containerColor: const Color(0xFFBB868E),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    subTitleColor: Colors.white,
+                  ),
+                  listTile(
+                    true,
+                    title: "Total Interest",
+                    subTitle: "Rs.$formattedTotalInterest",
+                    containerColor: const Color(0xFFFEFEFF),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    subTitleColor: Colors.white,
+                  ),
+                  listTile(
+                    false,
+                    title: "Total",
+                    subTitle: "Rs.$formattedTotalAmount",
+                    fontSize: 18,
+                    subTitleColor: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-
-        body: Center(
-            child: Container(
-                child: Column(
-                  children: <Widget>[
-                    Container(
-                        padding: const EdgeInsets.all(20.0),
-                        child: TextField(
-                          controller: _principalAmount,
-                          decoration: const InputDecoration(
-                              labelText: "Enter Principal Amount"
-                          ),
-                          keyboardType: TextInputType.number,
-
-                        )
-                    ),
-
-                    Container(
-                        padding: const EdgeInsets.all(20.0),
-                        child: TextField(
-                          controller: _interestRate,
-                          decoration: const InputDecoration(
-                              labelText: "Interest Rate"
-                          ),
-                          keyboardType: TextInputType.number,
-                        )
-                    ),
-
-                    Container(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Row(
-                          children: <Widget>[
-                            Flexible(
-                                flex: 4,
-                                fit: FlexFit.tight,
-                                child: TextField(
-                                  controller: _tenure,
-                                  decoration: const InputDecoration(
-                                      labelText: "Tenure"
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                )
-                            ),
-
-                            Flexible(
-                                flex: 1,
-                                child: Column(
-                                    children: [
-                                      Text(
-                                          _tenureType,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold
-                                          )
-                                      ),
-                                      Switch(
-                                          value: _switchValue,
-                                          onChanged: (bool value) {
-                                            print(value);
-
-                                            if( value ) {
-                                              _tenureType = _tenureTypes[1];
-                                            } else {
-                                              _tenureType = _tenureTypes[0];
-                                            }
-
-                                            setState(() {
-                                              _switchValue = value;
-                                            });
-                                          }
-
-                                      )
-                                    ]
-                                )
-                            )
-                          ],
-                        )
-
-                    ),
-
-                    Flexible(
-                        fit: FlexFit.loose,
-                        child: ElevatedButton(
-                            onPressed: _handleCalculation,
-                            child: const Text("Calculate"),
-                            style: ButtonStyle(
-                              backgroundColor: MaterialStateProperty.all(Colors.redAccent,)
-                            ),
-                            // textColor: Colors.white,
-                            // padding: const EdgeInsets.only(top: 10.0, bottom: 10.0, left: 24.0, right: 24.0)
-                        )
-                    ),
-
-                    emiResultsWidget(_emiResult)
-
-                  ],
-                )
-            )
-        )
+      ),
+      backgroundColor: const Color(0xFF2C2D36),
     );
   }
-
-  void _handleCalculation() {
-
-    //  Amortization
-    //  A = Payemtn amount per period
-    //  P = Initial Printical (loan amount)
-    //  r = interest rate
-    //  n = total number of payments or periods
-
-    double A = 0.0;
-    int P = int.parse(_principalAmount.text);
-    double r = int.parse(_interestRate.text) / 12 / 100;
-    int n = _tenureType == "Year(s)" ? int.parse(_tenure.text) * 12  : int.parse(_tenure.text);
-
-    A = (P * r * pow((1+r), n) / ( pow((1+r),n) -1));
-
-    _emiResult = A.toStringAsFixed(2);
-
-    setState(() {
-
-    });
-  }
+}
 
 
-  Widget emiResultsWidget(emiResult) {
+class PieData {
+  PieData(this.xData, this.yData, this.color);
 
-    bool canShow = false;
-    String _emiResult = emiResult;
-
-    if( _emiResult.length > 0 ) {
-      canShow = true;
-    }
-    return
-      Container(
-          margin: const EdgeInsets.only(top: 40.0),
-          child: canShow ? Column(
-              children: [
-                const Text("Your Monthly EMI is",
-                    style: TextStyle(
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.bold
-                    )
-                ),
-                Container(
-                    child: Text(_emiResult,
-                        style: const TextStyle(
-                            fontSize: 50.0,
-                            fontWeight: FontWeight.bold
-                        ))
-                )
-              ]
-          ) : Container()
-      );
-  }
+  final String xData;
+  final num yData;
+  final Color color;
 }
